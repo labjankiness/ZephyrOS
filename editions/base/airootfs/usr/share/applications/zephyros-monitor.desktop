@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=System Monitor
+Comment=Live CPU, memory, disk, and network usage
+Exec=kitty --title "ZephyrOS Monitor" -e zephyros-monitor
+Icon=utilities-system-monitor
+Terminal=false
+Type=Application
+Categories=System;Monitor;
+Keywords=system;monitor;cpu;memory;disk;network;

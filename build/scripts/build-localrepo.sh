@@ -30,6 +30,12 @@
 
 #
 
+# Packages built (local PKGBUILD under build/pkgbuilds/, source on GitHub):
+
+#   - tfm (Terminal-File-Manager)
+
+#
+
 # Requirements on the build host:
 
 #   - base-devel (makepkg, fakeroot, etc.)
@@ -37,6 +43,8 @@
 #   - git
 
 #   - pacman-contrib (repo-add)
+
+#   - cargo (to build tfm)
 
 #
 
@@ -251,6 +259,22 @@ main() {
         aur_clone_or_update "$p"
 
     done
+
+    # Custom (non-AUR) packages with a PKGBUILD checked into this repo.
+
+    LOCAL_PKGS="tfm"
+
+    for p in $LOCAL_PKGS; do
+
+        log "Preparing local PKGBUILD: $p"
+
+        ensure_dir "$SRC_DIR/$p"
+
+        cp "$ROOT_DIR/build/pkgbuilds/$p/PKGBUILD" "$SRC_DIR/$p/PKGBUILD"
+
+    done
+
+    PKGS="$PKGS $LOCAL_PKGS"
 
     for p in $PKGS; do
 

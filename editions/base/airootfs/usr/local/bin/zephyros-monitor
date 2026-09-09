@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+#
+# zephyros-monitor — Live system resource dashboard for ZephyrOS
+#
+# Terminal dashboard showing CPU, memory, disk, network, and GPU (if
+# available) usage, refreshed once per second.
+#
+import time
+import psutil
+import platform
+from datetime import datetime
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.columns import Columns
+from rich.live import Live
+
+try:
+    import GPUtil
+    GPU_AVAILABLE = True
+except ImportError:
+    GPU_AVAILABLE = False
+
+console = Console()
+
+
+def bytes_to_gb(b):
+    return b / (1024 ** 3)
+
+
+def make_bar(percent, width=20):
+    filled = int(width * percent / 100)
+    bar = "█" * filled + "░" * (width - filled)
+    color = "green" if percent < 60 else "yellow" if percent < 85 else "red"
+    return f"[{color}]{bar}[/{color}] {percent:.1f}%"
+
+
+def cpu_panel():
+    percent = psutil.cpu_percent(interval=None)
+    freq = psutil.cpu_freq()
+    cores = psutil.cpu_count(logical=False)
+    threads = psutil.cpu_count(logical=True)
+
+    t = Table.grid(padding=(0, 1))
+    t.add_row("Usage", make_bar(percent))
+    t.add_row("Cores / Threads", f"{cores} / {threads}")
+    if freq:
+        t.add_row("Frequency", f"{freq.current:.0f} MHz")
+    return Panel(t, title="[bold cyan]CPU[/bold cyan]", border_style="cyan")
+
+
+def memory_panel():
+    vm = psutil.virtual_memory()
+    swap = psutil.swap_memory()
+
+    t = Table.grid(padding=(0, 1))
+    t.add_row("RAM Usage", make_bar(vm.percent))
+    t.add_row("RAM", f"{bytes_to_gb(vm.used):.1f} / {bytes_to_gb(vm.total):.1f} GB")
+    t.add_row("Swap Usage", make_bar(swap.percent))
+    t.add_row("Swap", f"{bytes_to_gb(swap.used):.1f} / {bytes_to_gb(swap.total):.1f} GB")
+    return Panel(t, title="[bold magenta]Memory[/bold magenta]", border_style="magenta")
+
+
+def disk_panel():
+    t = Table.grid(padding=(0, 1))
+    for part in psutil.disk_partitions():
+        try:
+            usage = psutil.disk_usage(part.mountpoint)
+            t.add_row(
+                part.mountpoint,
+                make_bar(usage.percent),
+                f"{bytes_to_gb(usage.used):.1f}/{bytes_to_gb(usage.total):.1f} GB"
+            )
+        except PermissionError:
+            pass
+    return Panel(t, title="[bold yellow]Disks[/bold yellow]", border_style="yellow")
+
+
+def network_panel():
+    net = psutil.net_io_counters()
+    t = Table.grid(padding=(0, 1))
+    t.add_row("Sent", f"{bytes_to_gb(net.bytes_sent):.2f} GB")
+    t.add_row("Received", f"{bytes_to_gb(net.bytes_recv):.2f} GB")
+    t.add_row("Packets Sent", f"{net.packets_sent:,}")
+    t.add_row("Packets Recv", f"{net.packets_recv:,}")
+    return Panel(t, title="[bold green]Network[/bold green]", border_style="green")
+
+
+def system_panel():
+    uname = platform.uname()
+    boot = datetime.fromtimestamp(psutil.boot_time())
+    uptime = datetime.now() - boot
+
+    hours, rem = divmod(int(uptime.total_seconds()), 3600)
+    minutes, seconds = divmod(rem, 60)
+
+    t = Table.grid(padding=(0, 1))
+    t.add_row("OS", f"{uname.system} {uname.release}")
+    t.add_row("Hostname", uname.node)
+    t.add_row("Uptime", f"{hours}h {minutes}m {seconds}s")
+    t.add_row("Time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    return Panel(t, title="[bold white]System[/bold white]", border_style="white")
+
+
+def gpu_panel():
+    if not GPU_AVAILABLE:
+        return Panel("[dim]GPUtil not available[/dim]", title="[bold red]GPU[/bold red]", border_style="red")
+
+    gpus = GPUtil.getGPUs()
+    if not gpus:
+        return Panel("[dim]No GPU detected[/dim]", title="[bold red]GPU[/bold red]", border_style="red")
+
+    t = Table.grid(padding=(0, 1))
+    for gpu in gpus:
+        t.add_row(f"[bold]{gpu.name}[/bold]", "")
+        t.add_row("GPU Usage", make_bar(gpu.load * 100))
+        t.add_row("VRAM Usage", make_bar(gpu.memoryUtil * 100))
+        t.add_row("VRAM", f"{gpu.memoryUsed:.0f} / {gpu.memoryTotal:.0f} MB")
+        t.add_row("Temperature", f"{gpu.temperature} °C")
+    return Panel(t, title="[bold red]GPU[/bold red]", border_style="red")
+
+
+def build_layout():
+    top = Columns([cpu_panel(), memory_panel()], equal=True)
+    middle = Columns([gpu_panel(), network_panel()], equal=True)
+    bottom = disk_panel()
+    return [system_panel(), top, middle, bottom]
+
+
+def main():
+    psutil.cpu_percent(interval=0.1)
+    from rich.console import Group
+    with Live(console=console, refresh_per_second=1, screen=True) as live:
+        while True:
+            live.update(Group(*build_layout()))
+            time.sleep(1)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass

@@ -56,6 +56,8 @@ noto-fonts-emoji
 # --- File manager ---
 thunar
 gvfs
+# Terminal (TUI) file manager, built from build/pkgbuilds/tfm via local repo
+tfm
 
 # --- Terminal ---
 kitty
@@ -115,3 +117,8 @@ parted
 
 # --- AI runtime (shared across all AI editions) ---
 ollama
+
+# --- System monitor (zephyros-monitor) ---
+python
+python-psutil
+python-rich
