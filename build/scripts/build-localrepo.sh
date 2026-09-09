@@ -30,7 +30,7 @@
 
 #
 
-# Packages built (local PKGBUILD under build/pkgbuilds/, source on GitHub):
+# Packages built (local PKGBUILD under build/pkgbuilds/, source vendored in-repo):
 
 #   - tfm (Terminal-File-Manager)
 
@@ -268,9 +268,9 @@ main() {
 
         log "Preparing local PKGBUILD: $p"
 
-        ensure_dir "$SRC_DIR/$p"
+        rm -rf "$SRC_DIR/$p"
 
-        cp "$ROOT_DIR/build/pkgbuilds/$p/PKGBUILD" "$SRC_DIR/$p/PKGBUILD"
+        cp -r "$ROOT_DIR/build/pkgbuilds/$p" "$SRC_DIR/$p"
 
     done
 

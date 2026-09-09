@@ -1,27 +1,21 @@
 # Maintainer: labjankiness
+#
+# Source is vendored under ./source/ (originally from labjankiness/Terminal-File-Manager)
+# rather than fetched from a repo, so this build has no external dependency.
 pkgname=tfm
 pkgver=0.1.0
 pkgrel=1
 pkgdesc="Dual-panel TUI file manager for Linux built in Rust with ratatui"
 arch=('x86_64')
-url="https://github.com/labjankiness/Terminal-File-Manager"
 license=('MIT')
 depends=('gcc-libs')
 makedepends=('cargo')
-source=("git+https://github.com/labjankiness/Terminal-File-Manager.git")
-sha256sums=('SKIP')
-
-pkgver() {
-    cd "$srcdir/Terminal-File-Manager"
-    grep -m1 '^version' Cargo.toml | sed -E 's/.*"(.*)".*/\1/'
-}
 
 build() {
-    cd "$srcdir/Terminal-File-Manager"
-    cargo build --release --locked
+    cd "$startdir/source"
+    cargo build --release --locked --target-dir "$srcdir/target"
 }
 
 package() {
-    cd "$srcdir/Terminal-File-Manager"
-    install -Dm755 "target/release/tfm" "$pkgdir/usr/bin/tfm"
+    install -Dm755 "$srcdir/target/release/tfm" "$pkgdir/usr/bin/tfm"
 }
