@@ -40,7 +40,7 @@ vulkan-icd-loader
 libva-mesa-driver
 libva-intel-driver
 intel-media-driver
-mesa-vdpau
+# mesa-vdpau removed upstream — VDPAU support is now built into mesa
 libva-utils
 vdpauinfo
 virglrenderer
@@ -95,8 +95,8 @@ thermald
 upower
 acpi
 acpid
-# Suspend/hibernate helpers
-pm-utils
+# pm-utils removed from the Arch repos — suspend/hibernate is handled by
+# systemd-logind + upower now, no separate package needed
 
 # --- Flatpak ---
 flatpak

@@ -1,0 +1,4 @@
+# VM test artifacts — disk images, generated UEFI vars, run logs
+*.qcow2
+OVMF_VARS*.fd
+*.log

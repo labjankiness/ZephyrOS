@@ -87,15 +87,29 @@ main() {
         log "Warning: /dev/kvm not present, running without KVM acceleration."
     fi
 
+    # GL/virgl acceleration requires a working host DRI device, and OVMF's
+    # QemuVideoDxe driver (used by most distro OVMF builds) only speaks the
+    # classic "VGA" device, not virtio-gpu/virtio-vga. Some hosts (e.g.
+    # WSLg) also advertise a display but have no functional GL passthrough,
+    # so allow disabling GL via VM_GL=off, falling back to plain VGA.
+    GL_MODE=${VM_GL:-on}
+    if [ "$GL_MODE" = "on" ]; then
+        GPU_DEVICE="virtio-vga-gl"
+        GL_SUFFIX=",gl=on"
+    else
+        GPU_DEVICE="VGA"
+        GL_SUFFIX=""
+    fi
+
     DISPLAY_OPTS=""
     if [ -n "${VM_DISPLAY:-}" ]; then
-        DISPLAY_OPTS="-display $DISPLAY_BACKEND,gl=on"
+        DISPLAY_OPTS="-display $DISPLAY_BACKEND$GL_SUFFIX"
     else
         if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
             log "No DISPLAY or WAYLAND_DISPLAY detected; running headless with VNC on :0."
             DISPLAY_OPTS="-display none -vnc :0"
         else
-            DISPLAY_OPTS="-display $DISPLAY_BACKEND,gl=on"
+            DISPLAY_OPTS="-display $DISPLAY_BACKEND$GL_SUFFIX"
         fi
     fi
 
@@ -119,7 +133,7 @@ main() {
         -cdrom "$ISO" \
         -boot order=d \
         $DISPLAY_OPTS \
-        -device virtio-vga,virgl=on \
+        -device $GPU_DEVICE \
         -drive if=pflash,format=raw,readonly=on,file="$UEFI_CODE" \
         -drive if=pflash,format=raw,file="$UEFI_VARS" \
         ${VM_EXTRA_ARGS:-}

@@ -1,0 +1,3 @@
+# Build output — ISOs and mkarchiso work directories
+/out/
+/work-*/
