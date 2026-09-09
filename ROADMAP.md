@@ -98,6 +98,19 @@ Still requires bare-metal work:
 - Tuning boot services based on real-world `zephyros-bootreport` output.
 - Verifying suspend/resume across tested chipsets.
 
+### VM validation log
+
+No bare-metal hardware available, so pre-bare-metal validation is being done
+by building an edition ISO and booting it in QEMU/KVM+OVMF instead — this
+catches build/installer bugs before ever touching real hardware, but does not
+satisfy the bare-metal milestones above.
+
+- **2026-09-09**: Building the Core edition ISO inside a privileged Arch
+  Linux container (podman) on an Ubuntu 24.04 / WSL2 host, to then boot with
+  `vm/run-vm.sh` (qemu-system-x86_64 + OVMF, `/dev/kvm` available). In
+  progress as of this note — update this log with the outcome (boot success/
+  failure, Secure Boot state, installer run) once it completes.
+
 ## Phase 4 — Public ISO release [Scaffolded]
 
 Goal: polished ZephyrOS ISO with public documentation and a clear Secure Boot
