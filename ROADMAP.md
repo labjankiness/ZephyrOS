@@ -105,11 +105,47 @@ by building an edition ISO and booting it in QEMU/KVM+OVMF instead — this
 catches build/installer bugs before ever touching real hardware, but does not
 satisfy the bare-metal milestones above.
 
-- **2026-09-09**: Building the Core edition ISO inside a privileged Arch
-  Linux container (podman) on an Ubuntu 24.04 / WSL2 host, to then boot with
-  `vm/run-vm.sh` (qemu-system-x86_64 + OVMF, `/dev/kvm` available). In
-  progress as of this note — update this log with the outcome (boot success/
-  failure, Secure Boot state, installer run) once it completes.
+- **2026-09-09**: Built the Core edition ISO inside a privileged Arch Linux
+  container (podman, rootful — rootless podman cannot mount devtmpfs for
+  mkarchiso's chroot) on an Ubuntu 24.04 / WSL2 host, then boot-tested it in
+  QEMU/KVM+OVMF. Outcome:
+  - **Build**: succeeded end to end — merged packages, built `tfm` and the
+    AUR packages (`adw-gtk3`, `fluent-icon-theme-git`) from source via the
+    local repo, ran `mkarchiso`, produced a valid ISO. Found and fixed two
+    dead package names (`mesa-vdpau`, `pm-utils`, both removed upstream)
+    that were failing pacstrap.
+  - **Boot (non-Secure-Boot OVMF)**: fully verified. GRUB menu renders and
+    boots the default entry; kernel, initramfs, and systemd all come up;
+    `zephyros-firstboot.service` runs correctly (enables Ollama, correctly
+    skips the model pull for Core since it has none configured); reaches
+    `multi-user.target` and `graphical.target`; `zephyros` hostname and
+    login prompt appear on tty1. Did not confirm the Wayfire session
+    visually — this archiso build has no known/blank root password and no
+    autologin, so getting to an actual shell needs either a rebuilt profile
+    with autologin enabled for live testing, or testing via the real
+    installer (Phase 2) into a user account instead.
+  - **Boot (Secure Boot OVMF)**: this specific host cannot verify Secure
+    Boot at all — OVMF's `OVMF_CODE_4M.secboot.fd` throws a `#UD` (invalid
+    opcode) firmware exception at a fixed RIP whenever the extra virtio
+    devices (`virtio-scsi-pci`, `virtio-net-pci`) are attached alongside
+    it. Bisected via serial-console + `-d int,cpu_reset` debug logging:
+    Secure Boot firmware alone (SATA CD-ROM only) boots fine and correctly
+    rejects the unsigned GRUB image with "Access Denied" (expected —
+    ZephyrOS's dev MOK enrollment hasn't been run against this fresh VARS
+    template); the same virtio devices with non-Secure-Boot OVMF boot
+    fine. Only the combination crashes. This reproduced identically with
+    and without `-cpu host`, ruling out a CPUID/CPU-model mismatch — looks
+    like a WSL2/nested-KVM interaction with this specific Ubuntu OVMF
+    package, not a ZephyrOS defect. Secure Boot chain testing (`SECUREBOOT.md`
+    workflow, MOK enrollment) needs a host where OVMF's Secure Boot path
+    itself is known-good — native Linux or a VM host without nested
+    virtualization — to be meaningful.
+  - Also fixed two latent bugs in `vm/run-vm.sh` / `vm/vm.env` found along
+    the way (unrelated to the crash above): CRLF line endings in `vm.env`
+    breaking POSIX-shell sourcing, and a hardcoded `virtio-vga,virgl=on`
+    device syntax incompatible with newer QEMU (now toggleable via
+    `VM_GL=on/off`, falling back to plain `VGA` since OVMF's video driver
+    doesn't speak virtio-gpu on most distro builds anyway).
 
 ## Phase 4 — Public ISO release [Scaffolded]
 
